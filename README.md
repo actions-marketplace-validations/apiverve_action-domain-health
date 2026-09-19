@@ -2,8 +2,6 @@
 
 > Monitor domain expiration, WHOIS changes, and domain availability
 
-> **Beta Release** - This action is in beta. We'd love your feedback! [Open an issue](https://github.com/apiverve/action-domain-health/issues) if you encounter any problems.
-
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Domain_Health-blue?logo=github)](https://github.com/apiverve/action-domain-health)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -24,10 +22,10 @@ This action provides access to APIVerve's Domain Health APIs directly in your Gi
 
 | API | Description |
 |-----|-------------|
-| `domainexpiration` | Domain Expiration Checker is a simple tool for checking the expiration date and age of a domain. It returns the expiration date and age of the domain provided. |
-| `whoislookup` | Whois Lookup is a simple tool for checking the registration of a domain name. It returns the name and contact information of the domain owner, the domain registrar, and more. |
-| `domainavailability` | Domain Availability Checker is a simple tool for checking the availability of a domain. It returns if the domain is available or not. |
-| `domainpinger` | domainpinger API |
+| `domainexpiration` | Domain Expiration tracks domain expiration health and domain age for any web address. It returns days remaining until expiry, an expiration status, and age in days and years, with paid plans adding exact registration timestamps. |
+| `whoislookup` | WHOIS Lookup checks domain registration records to return registrar details, creation and expiration dates, domain age, and active nameservers. Pass any domain name to inspect status codes and calculate days since registration. |
+| `domainavailability` | Domain Availability checks domain availability in real time to show if a web address is open for registration or already taken. Get creation and expiration dates for taken domains, while paid plans add registrar details. |
+| `pinger` | Domain and IP Pinger checks whether any domain name or public IP address is reachable and responding in real time. It returns an alive status and successful round trips, while paid plans add packet loss percentages and latency metrics. |
 
 ---
 
@@ -39,7 +37,7 @@ This action provides access to APIVerve's Domain Health APIs directly in your Gi
   with:
     api_key: ${{ secrets.APIVERVE_KEY }}
     api: domainexpiration
-    params: '{&quot;domain&quot;: &quot;example.com&quot;}'
+    params: '{"domain": "example.com"}'
 ```
 
 ---
@@ -70,17 +68,40 @@ Go to your repository **Settings** → **Secrets and variables** → **Actions**
 
 ---
 
+## Pass/fail checks
+
+Set `check` and the action stops being a plain API call: it evaluates the result and fails the job when something is wrong, so problems surface in CI instead of in production.
+
+### Fail before the domain lapses
+
+Warn at 60 days, fail the job at 14 days
+
+```yaml
+- name: Fail before the domain lapses
+  uses: apiverve/action-domain-health@v1
+  with:
+    api_key: $
+    check: domain-expiry
+    domain: example.com
+    warn_days: 60
+    fail_days: 14
+```
+
+---
+
 ## Inputs
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `api_key` | Your APIVerve API key (or set `APIVERVE_API_KEY` env var) | Yes* | - |
-| `api` | API to use: `domainexpiration`, `whoislookup`, `domainavailability`, `domainpinger` | No | `domainexpiration` |
+| `api` | API to use: `domainexpiration`, `whoislookup`, `domainavailability`, `pinger` | No | `domainexpiration` |
 | `params` | JSON parameters for the API | No | `{}` |
 | `output_file` | Path to save binary output (images, PDFs) | No | - |
 | `format` | Response format: `json`, `yaml`, or `xml` | No | `json` |
 | `fail_on_error` | Fail workflow if API returns error | No | `true` |
-
+| `check` | Run a pass/fail check instead: `domain-expiry` | No | - |
+| `domain` | Domain to check | With `check` | - |
+| `warn_days` / `fail_days` | Warn / fail when this few days remain | No | `60` / `14` |
 *\*API key is required but can be provided via input OR `APIVERVE_API_KEY` / `APIVERVE_KEY` environment variable.*
 
 ## Outputs
@@ -91,7 +112,8 @@ Go to your repository **Settings** → **Secrets and variables** → **Actions**
 | `data` | The `data` field from response as JSON |
 | `status` | API status (`ok` or `error`) |
 | `file` | Path to downloaded file (if `output_file` was used) |
-
+| `days_remaining` | Days until expiry (`ssl-expiry`, `domain-expiry`) |
+| `records` | Matching DNS records as JSON (`dns-record`) |
 ---
 
 ## Examples
@@ -107,7 +129,7 @@ Check when a domain expires
   with:
     api_key: ${{ secrets.APIVERVE_KEY }}
     api: domainexpiration
-    params: '{&quot;domain&quot;: &quot;example.com&quot;}'
+    params: '{"domain": "example.com"}'
 
 - name: Use result
   run: echo "Result: ${{ steps.domain-health-0.outputs.data }}"
@@ -124,7 +146,7 @@ Get WHOIS information for a domain
   with:
     api_key: ${{ secrets.APIVERVE_KEY }}
     api: whoislookup
-    params: '{&quot;domain&quot;: &quot;example.com&quot;}'
+    params: '{"domain": "example.com"}'
 
 - name: Use result
   run: echo "Result: ${{ steps.domain-health-1.outputs.data }}"
@@ -155,7 +177,7 @@ jobs:
         with:
           api_key: ${{ secrets.APIVERVE_KEY }}
           api: domainexpiration
-          params: '{&quot;domain&quot;: &quot;example.com&quot;}'
+          params: '{"domain": "example.com"}'
 
       - name: Show result
         run: |

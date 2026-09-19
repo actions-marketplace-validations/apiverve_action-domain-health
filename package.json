@@ -1,6 +1,6 @@
 {
   "name": "@apiverve/action-domain-health",
-  "version": "0.1.0-beta",
+  "version": "1.0.0",
   "description": "Monitor domain expiration, WHOIS changes, and domain availability",
   "main": "dist/index.js",
   "scripts": {
